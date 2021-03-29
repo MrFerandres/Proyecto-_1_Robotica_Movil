@@ -16,6 +16,19 @@ import sim as vrep  # access all the VREP elements
 import random as rnd
 
 
+
+def girar():
+    t = 2.5/9
+    tiempo = time.time() + 2.5/9
+    while (time.time() - t) < tiempo:
+        err = vrep.simxSetJointTargetVelocity(clientID, motorL, 1.0, vrep.simx_opmode_streaming)
+        err = vrep.simxSetJointTargetVelocity(clientID, motorR, -1.0, vrep.simx_opmode_streaming)
+    print("Salio de girar")
+
+
+
+
+
 def angdiff(t1, t2):
     """
     Compute the angle difference, t2-t1, restricting the result to the [-pi,pi] range
@@ -38,6 +51,8 @@ else:
 err, motorL = vrep.simxGetObjectHandle(clientID, 'Pioneer_p3dx_leftMotor', vrep.simx_opmode_blocking)
 err, motorR = vrep.simxGetObjectHandle(clientID, 'Pioneer_p3dx_rightMotor', vrep.simx_opmode_blocking)
 err, robot = vrep.simxGetObjectHandle(clientID, 'Pioneer_p3dx', vrep.simx_opmode_blocking)
+errf = vrep.simxSetJointTargetVelocity(clientID, motorL, 0, vrep.simx_opmode_streaming)
+errf = vrep.simxSetJointTargetVelocity(clientID, motorR, 0, vrep.simx_opmode_streaming)
 
 # Assigning handles to the ultrasonic sensors
 usensor = []
@@ -58,12 +73,16 @@ Kv = 0.5
 Kh = 2.5
 
 # xd and yd are the coordinates of the desired setpoint
-xd = np.zeros(10) #si se modifica este 10 se tiene que modificar el de yd y el del siguiente for
-yd = np.zeros(10)
+xd = np.zeros(2) #si se modifica este 10 se tiene que modificar el de yd y el del siguiente for
+yd = np.zeros(2)
 
-for i in range(10):
-    xd[i]=(rnd.randrange(-3, 3))
-    yd[i]=(rnd.randrange(-3, 3))
+for i in range(1):
+    xd[i]=4
+    yd[i]=0
+    #xd[i]=(rnd.uniform(-5.5, 5.5))
+    #yd[i]=(rnd.uniform(-5.5, 5.5))
+xd[1]=4
+yd[1]=5
 
 print(xd,yd)
 
@@ -74,14 +93,35 @@ L = 0.311
 
 for i in range(len(xd)):
     errp = 10
-    while errp > 1.5:
+    while errp > 0.4:
+
+
+        for j in [2,3,4,5,6,7]:
+            #print("Entro a sensores \n -------------",j)
+            err, state, point, detectedObj, detectedSurfNormVec = vrep.simxReadProximitySensor(clientID, usensor[j],
+                                                                                               vrep.simx_opmode_buffer)
+            #print(state)
+            if state:
+                print("se encontro con un muro")
+                break
+        if state:
+            for alpha in range(5):
+                errf = vrep.simxSetJointTargetVelocity(clientID, motorL, 0, vrep.simx_opmode_streaming)
+                errf = vrep.simxSetJointTargetVelocity(clientID, motorR, 0, vrep.simx_opmode_streaming)
+            print("Se procede a girar 90 grados")
+            girar()
+            continue
+
+
+
+
 
         ret, carpos = vrep.simxGetObjectPosition(clientID, robot, -1, vrep.simx_opmode_blocking)
         ret, carrot = vrep.simxGetObjectOrientation(clientID, robot, -1, vrep.simx_opmode_blocking)
         errp = m.sqrt((xd[i] - carpos[0]) ** 2 + (yd[i] - carpos[1]) ** 2)
         angd = m.atan2(yd[i] - carpos[1], xd[i] - carpos[0])
         errh = angdiff(carrot[2], angd)
-        print('Distance to goal: {}   Heading error: {}'.format(errp, errh))
+        #print('Distance to goal: {}   Heading error: {}     carro poss {}'.format(errp, errh,carpos))
 
         # Uncomment for switched control
         # if errh > 2.0*m.pi/180.0:
@@ -99,6 +139,7 @@ for i in range(len(xd)):
         errf = vrep.simxSetJointTargetVelocity(clientID, motorL, ul, vrep.simx_opmode_streaming)
         errf = vrep.simxSetJointTargetVelocity(clientID, motorR, ur, vrep.simx_opmode_streaming)
         # time.sleep(0.1)
+    print('Punto {} encontrado \najajajajajajjaja\n'.format(i+1))
 
 for i in range(10):
     errf = vrep.simxSetJointTargetVelocity(clientID, motorL, 0, vrep.simx_opmode_streaming)
